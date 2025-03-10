@@ -5,81 +5,87 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Bookmark, Calendar, CheckCheck, Clock, Filter, Info, Search } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 
-// Mock data for the dashboard
-const mockInquiries = [
-  { 
-    id: 1, 
-    name: "John Smith", 
-    email: "john@example.com", 
-    message: "I'm interested in the property on 123 Main St.", 
-    createdAt: "2023-05-15T10:30:00Z",
-    status: "unread",
-    bookmarked: true 
-  },
-  { 
-    id: 2, 
-    name: "Emily Johnson", 
-    email: "emily@example.com", 
-    message: "Please contact me about the downtown penthouse.", 
-    createdAt: "2023-05-14T14:45:00Z",
-    status: "read",
-    bookmarked: false 
-  },
-  { 
-    id: 3, 
-    name: "Michael Brown", 
-    email: "michael@example.com", 
-    message: "Looking for information on your luxury properties.", 
-    createdAt: "2023-05-13T09:15:00Z",
-    status: "read",
-    bookmarked: true 
-  },
-  { 
-    id: 4, 
-    name: "Sarah Miller", 
-    email: "sarah@example.com", 
-    message: "Interested in scheduling a viewing this weekend.", 
-    createdAt: "2023-05-12T16:20:00Z",
-    status: "unread",
-    bookmarked: false 
-  },
-  { 
-    id: 5, 
-    name: "David Wilson", 
-    email: "david@example.com", 
-    message: "Do you have any properties in the south district?", 
-    createdAt: "2023-05-11T11:05:00Z",
-    status: "read",
-    bookmarked: false 
-  },
-];
+// Initialize Supabase client
+const supabaseUrl = "https://your-project-url.supabase.co";
+const supabaseKey = "your-anon-key";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-type Inquiry = typeof mockInquiries[0];
+// Define Inquiry type
+type Inquiry = {
+  id: number;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: string;
+  status: "unread" | "read";
+  bookmarked: boolean;
+};
 
 const Dashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
-  const [inquiries, setInquiries] = useState<Inquiry[]>(mockInquiries);
-  const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>(mockInquiries);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Handle authentication
-  const handleLogin = () => {
-    if (password === "1234") {
-      setIsAuthenticated(true);
-      toast({
-        title: "Success",
-        description: "You have been logged in to the dashboard.",
-      });
-    } else {
+  // Set up real-time subscription once authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchInquiries();
+      
+      // Subscribe to changes
+      const subscription = supabase
+        .channel('inquiries-changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'inquiries' }, 
+          payload => {
+            console.log('Change received!', payload);
+            fetchInquiries();
+            
+            if (payload.eventType === 'INSERT') {
+              toast({
+                title: "New Inquiry!",
+                description: `From: ${payload.new.name}`,
+              });
+            }
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [isAuthenticated]);
+
+  // Fetch inquiries from Supabase
+  const fetchInquiries = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('inquiries')
+        .select('*')
+        .order('createdAt', { ascending: false });
+        
+      if (error) throw error;
+      
+      if (data) {
+        setInquiries(data);
+      }
+    } catch (error) {
+      console.error('Error fetching inquiries:', error);
       toast({
         title: "Error",
-        description: "Incorrect password.",
+        description: "Failed to load inquiries",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -106,25 +112,78 @@ const Dashboard = () => {
     setFilteredInquiries(filtered);
   }, [inquiries, statusFilter, searchQuery]);
 
+  // Handle authentication
+  const handleLogin = () => {
+    if (password === "1234") {
+      setIsAuthenticated(true);
+      toast({
+        title: "Success",
+        description: "You have been logged in to the dashboard.",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Incorrect password.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Mark inquiry as read
-  const markAsRead = (id: number) => {
-    setInquiries(prev => 
-      prev.map(inquiry => 
-        inquiry.id === id ? { ...inquiry, status: "read" } : inquiry
-      )
-    );
-    toast({
-      description: "Marked as read",
-    });
+  const markAsRead = async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from('inquiries')
+        .update({ status: 'read' })
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      setInquiries(prev => 
+        prev.map(inquiry => 
+          inquiry.id === id ? { ...inquiry, status: "read" } : inquiry
+        )
+      );
+      
+      toast({
+        description: "Marked as read",
+      });
+    } catch (error) {
+      console.error('Error updating inquiry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update inquiry",
+        variant: "destructive",
+      });
+    }
   };
 
   // Toggle bookmark status
-  const toggleBookmark = (id: number) => {
-    setInquiries(prev => 
-      prev.map(inquiry => 
-        inquiry.id === id ? { ...inquiry, bookmarked: !inquiry.bookmarked } : inquiry
-      )
-    );
+  const toggleBookmark = async (id: number) => {
+    const inquiry = inquiries.find(i => i.id === id);
+    if (!inquiry) return;
+    
+    try {
+      const { error } = await supabase
+        .from('inquiries')
+        .update({ bookmarked: !inquiry.bookmarked })
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      setInquiries(prev => 
+        prev.map(inquiry => 
+          inquiry.id === id ? { ...inquiry, bookmarked: !inquiry.bookmarked } : inquiry
+        )
+      );
+    } catch (error) {
+      console.error('Error updating bookmark:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update bookmark",
+        variant: "destructive",
+      });
+    }
   };
 
   // Format date
@@ -142,7 +201,7 @@ const Dashboard = () => {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow">
+        <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow animate-fade-in">
           <div className="text-center">
             <h2 className="text-3xl font-display text-estate-800">Dashboard Login</h2>
             <p className="mt-2 text-gray-600">Enter password to access owner dashboard</p>
@@ -155,9 +214,15 @@ const Dashboard = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                className="animate-fade-in"
+                style={{ animationDelay: "100ms" }}
               />
             </div>
-            <Button className="w-full" onClick={handleLogin}>
+            <Button 
+              className="w-full hover-scale animate-fade-in" 
+              style={{ animationDelay: "200ms" }}
+              onClick={handleLogin}
+            >
               Login
             </Button>
           </div>
@@ -170,8 +235,8 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-          <h1 className="text-3xl font-display text-estate-800 mb-4 md:mb-0">Contact Inquiries</h1>
-          <div className="flex space-x-4">
+          <h1 className="text-3xl font-display text-estate-800 mb-4 md:mb-0 animate-fade-in">Contact Inquiries</h1>
+          <div className="flex space-x-4 animate-fade-in" style={{ animationDelay: "100ms" }}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -196,7 +261,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden animate-scale-in" style={{ animationDelay: "200ms" }}>
           <Table>
             <TableHeader>
               <TableRow>
@@ -209,7 +274,13 @@ const Dashboard = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInquiries.length === 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    Loading inquiries...
+                  </TableCell>
+                </TableRow>
+              ) : filteredInquiries.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     No inquiries found
@@ -217,12 +288,12 @@ const Dashboard = () => {
                 </TableRow>
               ) : (
                 filteredInquiries.map((inquiry) => (
-                  <TableRow key={inquiry.id} className={inquiry.status === "unread" ? "bg-blue-50" : ""}>
+                  <TableRow key={inquiry.id} className={`${inquiry.status === "unread" ? "bg-blue-50" : ""} animate-fade-in`}>
                     <TableCell>
                       {inquiry.status === "unread" ? (
-                        <div className="h-2 w-2 rounded-full bg-blue-500" title="Unread" />
+                        <div className="h-2 w-2 rounded-full bg-blue-500" aria-label="Unread" />
                       ) : (
-                        <CheckCheck className="h-4 w-4 text-green-500" title="Read" />
+                        <CheckCheck className="h-4 w-4 text-green-500" aria-label="Read" />
                       )}
                     </TableCell>
                     <TableCell className="font-medium">{inquiry.name}</TableCell>
@@ -242,7 +313,8 @@ const Dashboard = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleBookmark(inquiry.id)}
-                          title={inquiry.bookmarked ? "Remove bookmark" : "Bookmark"}
+                          aria-label={inquiry.bookmarked ? "Remove bookmark" : "Bookmark"}
+                          className="hover-scale"
                         >
                           <Bookmark
                             className={`h-4 w-4 ${inquiry.bookmarked ? "fill-yellow-400 text-yellow-400" : "text-gray-400"}`}
@@ -253,7 +325,8 @@ const Dashboard = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => markAsRead(inquiry.id)}
-                            title="Mark as read"
+                            aria-label="Mark as read"
+                            className="hover-scale"
                           >
                             <CheckCheck className="h-4 w-4 text-gray-400" />
                           </Button>
@@ -261,7 +334,8 @@ const Dashboard = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          title="View details"
+                          aria-label="View details"
+                          className="hover-scale"
                         >
                           <Info className="h-4 w-4 text-gray-400" />
                         </Button>

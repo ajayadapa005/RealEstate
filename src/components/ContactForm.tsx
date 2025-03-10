@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { createClient } from "@supabase/supabase-js";
 import {
   Form,
   FormControl,
@@ -15,6 +16,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
+// Initialize Supabase client
+const supabaseUrl = "https://your-project-url.supabase.co";
+const supabaseKey = "your-anon-key";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
@@ -40,15 +46,25 @@ const ContactForm = () => {
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      // In a real app, we would send this to Supabase here
-      console.log("Submitting data:", data);
+      // Add timestamp and read status
+      const inquiryData = {
+        ...data,
+        createdAt: new Date().toISOString(),
+        status: "unread",
+        bookmarked: false
+      };
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Insert data into Supabase
+      const { error } = await supabase
+        .from('inquiries')
+        .insert([inquiryData]);
+      
+      if (error) throw error;
       
       toast({
         title: "Message sent!",
         description: "We'll get back to you as soon as possible.",
+        variant: "default",
       });
       
       form.reset();
@@ -71,7 +87,7 @@ const ContactForm = () => {
           control={form.control}
           name="name"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="animate-fade-in">
               <FormLabel>Name</FormLabel>
               <FormControl>
                 <Input placeholder="Your Name..." {...field} />
@@ -85,7 +101,7 @@ const ContactForm = () => {
           control={form.control}
           name="email"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="animate-fade-in" style={{ animationDelay: "100ms" }}>
               <FormLabel>Email</FormLabel>
               <FormControl>
                 <Input placeholder="Your Email..." {...field} />
@@ -99,7 +115,7 @@ const ContactForm = () => {
           control={form.control}
           name="message"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="animate-fade-in" style={{ animationDelay: "200ms" }}>
               <FormLabel>Message</FormLabel>
               <FormControl>
                 <Textarea 
@@ -115,7 +131,8 @@ const ContactForm = () => {
         
         <Button 
           type="submit" 
-          className="w-full bg-black hover:bg-black/90 text-white"
+          className="w-full bg-black hover:bg-black/90 text-white animate-fade-in hover-scale"
+          style={{ animationDelay: "300ms" }}
           disabled={isSubmitting}
         >
           {isSubmitting ? "Submitting..." : "Submit"}
