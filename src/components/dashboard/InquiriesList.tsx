@@ -1,4 +1,3 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Bookmark, Calendar, CheckCheck, Info } from "lucide-react";
@@ -33,22 +32,35 @@ const InquiriesList = ({ inquiries, isLoading, setInquiries }: InquiriesListProp
   // Mark inquiry as read
   const markAsRead = async (id: number) => {
     try {
-      const { error } = await supabase
-        .from('inquiries')
-        .update({ status: 'read' })
-        .eq('id', id);
-        
-      if (error) throw error;
-      
+      // Update local state immediately for better UX
       setInquiries(prev => 
         prev.map(inquiry => 
           inquiry.id === id ? { ...inquiry, status: "read" } : inquiry
         )
       );
       
-      toast({
-        description: "Marked as read",
-      });
+      // Then attempt Supabase update
+      try {
+        const { error } = await supabase
+          .from('inquiries')
+          .update({ status: 'read' })
+          .eq('id', id);
+          
+        if (error) {
+          console.error('Error updating inquiry in Supabase:', error);
+          throw error;
+        }
+        
+        toast({
+          description: "Marked as read",
+        });
+      } catch (supabaseError) {
+        console.error('Supabase error:', supabaseError);
+        // Still keep the UI updated even if Supabase fails
+        toast({
+          description: "Marked as read (local only)",
+        });
+      }
     } catch (error) {
       console.error('Error updating inquiry:', error);
       toast({
@@ -65,18 +77,28 @@ const InquiriesList = ({ inquiries, isLoading, setInquiries }: InquiriesListProp
     if (!inquiry) return;
     
     try {
-      const { error } = await supabase
-        .from('inquiries')
-        .update({ bookmarked: !inquiry.bookmarked })
-        .eq('id', id);
-        
-      if (error) throw error;
-      
+      // Update local state immediately for better UX
       setInquiries(prev => 
         prev.map(inquiry => 
           inquiry.id === id ? { ...inquiry, bookmarked: !inquiry.bookmarked } : inquiry
         )
       );
+      
+      // Then attempt Supabase update
+      try {
+        const { error } = await supabase
+          .from('inquiries')
+          .update({ bookmarked: !inquiry.bookmarked })
+          .eq('id', id);
+          
+        if (error) {
+          console.error('Error updating bookmark in Supabase:', error);
+          throw error;
+        }
+      } catch (supabaseError) {
+        console.error('Supabase error:', supabaseError);
+        // The UI is already updated even if Supabase fails
+      }
     } catch (error) {
       console.error('Error updating bookmark:', error);
       toast({
