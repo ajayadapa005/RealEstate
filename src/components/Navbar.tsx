@@ -1,3 +1,5 @@
+
+import { Link } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -11,17 +13,19 @@ const Navbar = () => {
     <nav className="absolute w-full z-50">
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="flex items-center justify-between h-20">
-          <a href="/" className="text-2xl font-display text-white">Elite Real Estate</a>
+          <Link to="/" className="text-2xl font-display text-white">Elite Real Estate</Link>
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <a href="#properties" className="text-white hover:text-white/80 transition-colors">Properties</a>
-            <a href="#about" className="text-white hover:text-white/80 transition-colors">About</a>
-            <a href="#testimonials" className="text-white hover:text-white/80 transition-colors">Testimonials</a>
-            <a href="#contact" className="text-white hover:text-white/80 transition-colors">Contact</a>
-            <Button variant="outline" className="text-black border-white bg-white hover:bg-white/90">
-              Get Started
-            </Button>
+            <Link to="/properties" className="text-white hover:text-white/80 transition-colors">Properties</Link>
+            <Link to="/about" className="text-white hover:text-white/80 transition-colors">About</Link>
+            <Link to="/testimonials" className="text-white hover:text-white/80 transition-colors">Testimonials</Link>
+            <Link to="/contact" className="text-white hover:text-white/80 transition-colors">Contact</Link>
+            <Link to="/contact">
+              <Button variant="outline" className="text-black border-white bg-white hover:bg-white/90">
+                Get Started
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile Navigation */}
@@ -34,11 +38,13 @@ const Navbar = () => {
               </SheetTrigger>
               <SheetContent>
                 <div className="flex flex-col space-y-4 mt-8">
-                  <a href="#properties" className="text-lg">Properties</a>
-                  <a href="#about" className="text-lg">About</a>
-                  <a href="#testimonials" className="text-lg">Testimonials</a>
-                  <a href="#contact" className="text-lg">Contact</a>
-                  <Button className="w-full text-black bg-white hover:bg-white/90">Get Started</Button>
+                  <Link to="/properties" className="text-lg">Properties</Link>
+                  <Link to="/about" className="text-lg">About</Link>
+                  <Link to="/testimonials" className="text-lg">Testimonials</Link>
+                  <Link to="/contact" className="text-lg">Contact</Link>
+                  <Link to="/contact">
+                    <Button className="w-full text-black bg-white hover:bg-white/90">Get Started</Button>
+                  </Link>
                 </div>
               </SheetContent>
             </Sheet>
