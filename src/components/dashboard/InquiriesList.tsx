@@ -2,12 +2,12 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Bookmark, Calendar, CheckCheck, Info } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client
-const supabaseUrl = "https://your-project-url.supabase.co";
-const supabaseKey = "your-anon-key";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://zmyyfacgqtidtawytwsa.supabase.co";
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpteXlmYWNncXRpZHRhd3l0d3NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MDU2MDMsImV4cCI6MjA1NzE4MTYwM30.vQO_FGu2_sBrImQ2J44xzAZCscW_3Fau8KQB29yaoYM";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Define Inquiry type

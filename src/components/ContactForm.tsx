@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/form";
 
 // Initialize Supabase client
-const supabaseUrl = "https://your-project-url.supabase.co";
-const supabaseKey = "your-anon-key";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://zmyyfacgqtidtawytwsa.supabase.co";
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpteXlmYWNncXRpZHRhd3l0d3NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2MDU2MDMsImV4cCI6MjA1NzE4MTYwM30.vQO_FGu2_sBrImQ2J44xzAZCscW_3Fau8KQB29yaoYM";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const formSchema = z.object({
@@ -46,6 +46,9 @@ const ContactForm = () => {
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
+      console.log("Submitting form data:", data);
+      console.log("Using Supabase URL:", supabaseUrl);
+      
       // Add timestamp and read status
       const inquiryData = {
         ...data,
@@ -59,7 +62,10 @@ const ContactForm = () => {
         .from('inquiries')
         .insert([inquiryData]);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error submitting form:", error);
+        throw error;
+      }
       
       toast({
         title: "Message sent!",
